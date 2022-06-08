@@ -10,7 +10,8 @@ from sklearn.compose import make_column_transformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import RandomizedSearchCV, cross_val_score, cross_validate, train_test_split
+from sklearn.metrics import accuracy_score, plot_confusion_matrix, precision_score, recall_score
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, cross_val_score, cross_validate, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, OrdinalEncoder, StandardScaler
@@ -43,7 +44,7 @@ def save_fig(fig_id, tight_layout=True, fig_extension="png", resolution=300):
         plt.savefig(path, format=fig_extension, dpi=resolution)
         plt.clf()
         return
-    print(f"Skipping {fig_id}... Saving is disabled hehe")
+    print(f"Skipping {fig_id}... Saving is disabled.")
 
 
 def load_data(data_path=WHO_PATH):
@@ -118,12 +119,14 @@ Popular algorithms are:
 
 score_list = list()
 
-
+def add_score(acc, title):
+    score_list.append({"score": acc, "name": title})
+        
 def cross_validation(model, title):
     scores = cross_val_score(model, X, y, cv=5)
     acc = scores.mean()
     print("%s accuracy: %0.4f (+/- %0.4f)" % (title, acc, scores.std() * 2))
-    score_list.append({"score": acc, "name": title})
+    add_score(acc, title)
     return acc
 
     # K-Nearest
@@ -157,15 +160,38 @@ for i, result in enumerate(score_list):
 
 # Log reg:
 lr_params = {
-    "C": list(np.arange(0.1, 10, 0.1)),
+    "C": list(np.arange(0.1, 1, 0.01)),
     "class_weight": [None],
     "solver": ["lbfgs"]
 }
-n_iter = 100
+n_iter = 50
+score_list = list()
+def tune_model(model, params, title):
+    grid_search = GridSearchCV(estimator=model, param_grid = params, cv=5)
+    grid_search.fit(X_train, y_train)
+    acc = grid_search.best_score_
+    print(f"{title}:\n\tBEST PARAMS: {grid_search.best_params_}\n\tTRAIN SCORE:{acc}\n")    
+    best_model = grid_search.best_estimator_
+    y_pred = best_model.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+    # TODO: recall is not working properly (shows zero)
+    rec = recall_score(y_test, y_pred, labels=np.unique(y_pred))
+    pre = precision_score(y_test, y_pred, average='weighted', labels=np.unique(y_pred))
+    plot_confusion_matrix(best_model, X_test, y_test, cmap='GnBu')
+    print(acc,rec,pre)
+    save_fig(f"confusion_matrix_{title}")
+    score_list.append({"accuracy": acc, "recall":rec, "precision":pre, "average":np.mean([acc, rec, pre]),  "name": title})
+    print("\tTEST:\n\t ACCURACY: %0.4f \t RECALL: %0.4f \t PRECISION: %0.4f" % (acc,rec,pre))
+    score_list.append({"score": acc, "name": title})
+
+
 lr_rscv = RandomizedSearchCV(
-    estimator=lr_clf, param_distributions=lr_params, n_iter=n_iter, random_state=RANDOM_STATE, verbose=1)
+    estimator=lr_clf, param_distributions=lr_params, n_iter=n_iter, random_state=RANDOM_STATE)
+
 
 lr_rscv.fit(X_train, y_train)
-print(lr_rscv.best_params_, lr_rscv.best_score_)
+# TEST 
 
-print()
+lr_params["C"] = [0.1, 0.4, 0.6, 1.]
+
+tune_model(lr_clf, lr_params, "Linear Regression" )
