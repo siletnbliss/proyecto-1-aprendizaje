@@ -8,9 +8,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
 
 DATA_PATH = "wines/wines.csv"
 
@@ -65,22 +66,25 @@ num_pipeline = Pipeline([
         ('std_scaler', StandardScaler())
     ])
 wine_data_tr = num_pipeline.fit_transform(wine_data)
-print(wine_data_tr)
+X_test_tr = num_pipeline.fit_transform(X_test)
 
 # 4.Exploracion de modelos (3 modelos distintos)
 score_list = []
 
 def cross_validation(model, title):
-    scores = cross_val_score(model, wine_data_tr, y, cv=5)
+    scores = cross_val_score(model, X_test_tr, y_test, cv=2)
     acc = scores.mean()
     print("%s accuracy: %0.4f (+/- %0.4f)" % (title, acc, scores.std() * 2))
     score_list.append({"score": acc, "name": title})
     return acc
 
-# K-Nearest
+print(X_test_tr)
+print(y_test)
+
+# KNearest Classification
 knclf = KNeighborsClassifier()
 knclf.fit(X_train, y_train)
-cross_validation(knclf, "K-Nearest Neighbors")
+cross_validation(knclf, "KN")
 
 # Decision Tree
 dtclf = DecisionTreeClassifier()
@@ -92,10 +96,13 @@ rfclf = RandomForestClassifier()
 rfclf.fit(X_train, y_train)
 cross_validation(rfclf, "Random Forest")
 
-# SVM
-svmclf = SVC()
-svmclf.fit(X_train, y_train)
-cross_validation(svmclf, "SVC")
+# Gradient
+le = LabelEncoder()
+xgclf = XGBClassifier()
+xgclf.fit(X_train, le.fit_transform(y_train))
+cross_validation(xgclf, "Gradient")
+
+print(score_list)
 
 # 5.Afinacion de modelos
 
