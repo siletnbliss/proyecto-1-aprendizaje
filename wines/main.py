@@ -46,13 +46,11 @@ plt.colorbar()
 save_fig("wine-correlation")
 
 # Transformar ('superior' si quality >= 6)
-print(wine_data['quality'].value_counts())
 bins = (0, 6, 10)
 group_names = ['inferior', 'superior']
 wine_data['quality'] = pd.cut(wine_data['quality'], bins = bins, labels = group_names)
 le = LabelEncoder()
 wine_data['quality'] = le.fit_transform(wine_data['quality'])
-print(wine_data['quality'].value_counts())
 
 # Generacion del conjunto de prueba
 
@@ -94,13 +92,34 @@ rfclf = RandomForestClassifier()
 rfclf.fit(X_train_tr, y_train)
 cross_validation(rfclf, "Random Forest")
 
-# Gradient
-le = LabelEncoder()
-xgclf = XGBClassifier()
-xgclf.fit(X_train_tr, y_train)
-cross_validation(xgclf, "Gradient")
+# Support Vector Machine
+svmclf = SVC()
+svmclf.fit(X_train_tr, y_train)
+cross_validation(svmclf, "Support Vector Machine")
 
 # Afinacion de modelos
+
+def tune_model(model, param_grid, title):
+    grid_search = GridSearchCV(model, param_grid, cv=10, n_jobs=-1,
+                           scoring='accuracy')
+    grid_search.fit(X_train_tr, y_train)
+    print("\n" + title)
+    print(grid_search.best_params_)
+
+# Decision Tree
+param_grid = {
+    'max_depth': [90, 100, 110],
+    'max_features': [2, 3],
+    'min_samples_leaf': [3, 4, 5],
+    'min_samples_split': [8, 10, 12]
+}
+
+tune_model(dtclf, param_grid, "Decision Tree")
+dtclf_hp = DecisionTreeClassifier(max_depth=90, max_features=2, min_samples_leaf=5, min_samples_split=8)
+dtclf_hp.fit(X_train_tr, y_train)
+cross_validation(dtclf_hp, "Decision Tree (Tuned)")
+
+# Random Forest
 param_grid = {
     'bootstrap': [True],
     'max_depth': [90, 100, 110],
@@ -110,16 +129,22 @@ param_grid = {
     'n_estimators': [50, 100, 200]
 }
 
-grid_search = GridSearchCV(rfclf, param_grid, cv=10, n_jobs=-1,
-                           scoring='accuracy')
-grid_search.fit(X_train_tr, y_train)
-print()
-print(grid_search.best_params_)
-print(grid_search.best_estimator_)
-print()
-
+tune_model(rfclf, param_grid, "Random Forest")
 rfclf_hp = RandomForestClassifier(max_depth=110, max_features=2, min_samples_leaf=3, min_samples_split=8, n_estimators=50)
 rfclf_hp.fit(X_train_tr, y_train)
 cross_validation(rfclf_hp, "Random Forest (Tuned)")
 
-print(score_list)
+# Support Vector Machine
+param_grid = {
+    'C': [0.1, 1, 10, 100, 1000],
+    'kernel': ['rbf'],
+    'gamma': [1, 0.1, 0.01, 0.001, 0.0001],
+}
+
+tune_model(svmclf, param_grid, "Support Vector Machine")
+svmclf_hp = SVC(C=100, kernel="rbf", gamma=1)
+svmclf_hp.fit(X_train_tr, y_train)
+cross_validation(svmclf_hp, "Support Vector Machine (Tuned)")
+
+model = max(score_list, key=lambda x:x['score'])
+print(f"Most accurate model: { model.get('name') } with score " + "{:.2%}".format(model.get('score')))
