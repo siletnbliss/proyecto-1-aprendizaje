@@ -122,15 +122,15 @@ cross_validation(dtclf_hp, "Decision Tree (Tuned)")
 # Random Forest
 param_grid = {
     'bootstrap': [True],
-    'max_depth': [90, 100, 110],
+    'max_depth': [100, 110, 120],
     'max_features': [2, 3],
-    'min_samples_leaf': [3, 4, 5],
-    'min_samples_split': [8, 10, 12],
+    'min_samples_leaf': [1, 2, 3],
+    'min_samples_split': [1, 2, 4, 8],
     'n_estimators': [50, 100, 200]
 }
 
 tune_model(rfclf, param_grid, "Random Forest")
-rfclf_hp = RandomForestClassifier(max_depth=110, max_features=2, min_samples_leaf=3, min_samples_split=8, n_estimators=50)
+rfclf_hp = RandomForestClassifier(max_depth=120, max_features=2, min_samples_leaf=1, min_samples_split=2, n_estimators=50)
 rfclf_hp.fit(X_train_tr, y_train)
 cross_validation(rfclf_hp, "Random Forest (Tuned)")
 
