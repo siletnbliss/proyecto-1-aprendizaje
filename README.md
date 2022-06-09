@@ -20,4 +20,12 @@
 
 ### Run project
 
-#### TODO LMAOOOOOOO
+Change to one of the problems's folder (who, wines)
+
+```shell
+cd wines
+```
+
+```shell
+python main.py
+```
